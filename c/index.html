@@ -19,7 +19,8 @@
 <!--
   A friend's challenge (the game's round 9, item 7): the link a player sends from Bevel's share card,
   c/?room=5&shots=2. It shows the room and the shots to beat, with Open in Bevel (the app's own
-  bevel://challenge link) and the App Store. Nothing opens by itself: Safari shows an error for a
+  bevel://challenge link) and the App Store. A reply (round 11) adds vs, the count the opener sent:
+  c/?room=5&shots=1&vs=2 shows "Your friend answered", both scores and who won. Nothing opens by itself: Safari shows an error for a
   bevel:// link when the app isn't there, and in-app browsers block it, so the friend taps.
   The query is checked as the app checks it (src/ui/challenge.ts parseChallenge) and only ever set as
   text, never as HTML. No network calls, cookies or analytics.
@@ -34,6 +35,8 @@
     <p class="kicker" id="title">A friend challenged you</p>
     <h1 class="vs" id="vs" hidden></h1>
     <p class="tag" id="rule" hidden>Clear it in fewer shots to win.</p>
+    <p class="tag score" id="score" hidden></p>
+    <p class="tag verdict" id="verdict" hidden></p>
     <div class="actions">
       <a class="button" id="open" href="#" hidden>Open in Bevel</a>
       <a class="button secondary" id="get" href="https://apps.apple.com/app/id6836523701">Get Bevel on the App Store</a>
@@ -50,17 +53,17 @@
   "use strict";
   // The app's own words (games/game1/src/i18n): the HUD title the friend will see, "ROOM 5 · VS 2 SHOTS".
   var WORDS = {
-  en: {"title": "A friend challenged you", "rule": "Clear it in fewer shots to win.", "open": "Open in Bevel", "get": "Get Bevel on the App Store", "room": "ROOM {n}", "daily": "DAILY {date}", "trick": "TRICK SHOT {n}", "vs": {"one": "{where} · VS {n} SHOT", "other": "{where} · VS {n} SHOTS"}, "date": "{mon} {d}", "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]},
-  es: {"title": "Un amigo te reta", "rule": "Supérala en menos tiros para ganar.", "open": "Abrir en Bevel", "get": "Descarga Bevel en la App Store", "room": "SALA {n}", "daily": "DIARIA {date}", "trick": "TIRO DE TRUCO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIROS"}, "date": "{d} {mon}", "months": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]},
-  pt: {"title": "Um amigo te desafiou", "rule": "Passe a fase com menos tacadas para vencer.", "open": "Abrir no Bevel", "get": "Baixe o Bevel na App Store", "room": "FASE {n}", "daily": "DIÁRIA {date}", "trick": "SUPERTACADA {n}", "vs": {"one": "{where} · VS {n} TACADA", "other": "{where} · VS {n} TACADAS"}, "date": "{d} {mon}", "months": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]},
-  ja: {"title": "友だちからの挑戦状", "rule": "もっと少ない発数でクリアしたら勝ち。", "open": "Bevelで開く", "get": "App StoreでBevelを入手", "room": "ステージ{n}", "daily": "デイリー {date}", "trick": "トリックショット{n}", "vs": {"other": "{where} · VS {n}発"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]},
-  de: {"title": "Ein Freund fordert dich heraus", "rule": "Schaff es mit weniger Schüssen, um zu gewinnen.", "open": "In Bevel öffnen", "get": "Bevel im App Store laden", "room": "RAUM {n}", "daily": "TÄGLICH {date}", "trick": "TRICKSCHUSS {n}", "vs": {"one": "{where} · VS {n} SCHUSS", "other": "{where} · VS {n} SCHÜSSE"}, "date": "{d}. {mon}", "months": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."]},
-  fr: {"title": "Un ami te lance un défi", "rule": "Réussis-la en moins de coups pour gagner.", "open": "Ouvrir dans Bevel", "get": "Télécharger Bevel sur l’App Store", "room": "SALLE {n}", "daily": "SALLE DU {date}", "trick": "COUP DE MAÎTRE {n}", "vs": {"one": "{where} · VS {n} COUP", "other": "{where} · VS {n} COUPS"}, "date": "{d} {mon}", "months": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]},
-  ko: {"title": "친구가 도전장을 보냈어요", "rule": "더 적은 샷으로 깨면 이겨요.", "open": "Bevel에서 열기", "get": "App Store에서 Bevel 받기", "room": "{n}번 방", "daily": "데일리 {date}", "trick": "트릭샷 {n}", "vs": {"other": "{where} · VS {n}샷"}, "date": "{mon} {d}일", "months": ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]},
-  it: {"title": "Un amico ti ha sfidato", "rule": "Superala con meno tiri per vincere.", "open": "Apri in Bevel", "get": "Scarica Bevel dall’App Store", "room": "STANZA {n}", "daily": "STANZA DEL {date}", "trick": "TIRO A EFFETTO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIRI"}, "date": "{d} {mon}", "months": ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]},
-  zh: {"title": "朋友向你發起挑戰", "rule": "用更少的球過關就贏了。", "open": "在 Bevel 中開啟", "get": "在 App Store 下載 Bevel", "room": "第 {n} 關", "daily": "每日 {date}", "trick": "花式球 {n}", "vs": {"other": "{where} · VS {n} 球"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]},
-  tr: {"title": "Bir arkadaşın sana meydan okudu", "rule": "Kazanmak için daha az atışta geç.", "open": "Bevel’de aç", "get": "Bevel’i App Store’dan indir", "room": "ODA {n}", "daily": "GÜNLÜK {date}", "trick": "USTA ATIŞ {n}", "vs": {"other": "{where} · VS {n} ATIŞ"}, "date": "{d} {mon}", "months": ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]},
-  id: {"title": "Temanmu menantangmu", "rule": "Tuntaskan dengan tembakan lebih sedikit untuk menang.", "open": "Buka di Bevel", "get": "Unduh Bevel di App Store", "room": "RUANG {n}", "daily": "HARIAN {date}", "trick": "TEMBAKAN JITU {n}", "vs": {"other": "{where} · VS {n} TEMBAKAN"}, "date": "{d} {mon}", "months": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]},
+  en: {"title": "A friend challenged you", "rule": "Clear it in fewer shots to win.", "open": "Open in Bevel", "get": "Get Bevel on the App Store", "room": "ROOM {n}", "daily": "DAILY {date}", "trick": "TRICK SHOT {n}", "vs": {"one": "{where} · VS {n} SHOT", "other": "{where} · VS {n} SHOTS"}, "date": "{mon} {d}", "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], "replyTitle": "Your friend answered", "ruleOne": "One shot is the best there is. Match it.", "theyWin": "They win this round.", "tie": "A tie. Fewer shots takes it.", "tieOne": "A tie at one shot: the best there is.", "youHold": "You still hold this room.", "them": {"one": "Your friend · {n} shot", "other": "Your friend · {n} shots"}, "you": {"one": "You · {n} shot", "other": "You · {n} shots"}},
+  es: {"title": "Un amigo te reta", "rule": "Supérala en menos tiros para ganar.", "open": "Abrir en Bevel", "get": "Descarga Bevel en la App Store", "room": "SALA {n}", "daily": "DIARIA {date}", "trick": "TIRO DE TRUCO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIROS"}, "date": "{d} {mon}", "months": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"], "replyTitle": "Tu amigo respondió", "ruleOne": "Un tiro es lo mejor posible. Iguálalo.", "theyWin": "Esta ronda es suya.", "tie": "Empate. Gana quien use menos tiros.", "tieOne": "Empate a un tiro: no se puede mejorar.", "youHold": "La sala sigue siendo tuya.", "them": {"one": "Tu amigo · {n} tiro", "other": "Tu amigo · {n} tiros"}, "you": {"one": "Tú · {n} tiro", "other": "Tú · {n} tiros"}},
+  pt: {"title": "Um amigo te desafiou", "rule": "Passe a fase com menos tacadas para vencer.", "open": "Abrir no Bevel", "get": "Baixe o Bevel na App Store", "room": "FASE {n}", "daily": "DIÁRIA {date}", "trick": "SUPERTACADA {n}", "vs": {"one": "{where} · VS {n} TACADA", "other": "{where} · VS {n} TACADAS"}, "date": "{d} {mon}", "months": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"], "replyTitle": "Seu amigo respondeu", "ruleOne": "Uma tacada é o melhor possível. Iguale.", "theyWin": "Essa rodada é dele.", "tie": "Empate. Vence quem usar menos tacadas.", "tieOne": "Empate em uma tacada: o melhor possível.", "youHold": "A fase continua sua.", "them": {"one": "Seu amigo · {n} tacada", "other": "Seu amigo · {n} tacadas"}, "you": {"one": "Você · {n} tacada", "other": "Você · {n} tacadas"}},
+  ja: {"title": "友だちからの挑戦状", "rule": "もっと少ない発数でクリアしたら勝ち。", "open": "Bevelで開く", "get": "App StoreでBevelを入手", "room": "ステージ{n}", "daily": "デイリー {date}", "trick": "トリックショット{n}", "vs": {"other": "{where} · VS {n}発"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"], "replyTitle": "友だちから返事", "ruleOne": "1発が最高記録。並んでみよう。", "theyWin": "このラウンドは友だちの勝ち。", "tie": "引き分け。少ない発数が勝ち。", "tieOne": "1発で引き分け：これ以上はない。", "youHold": "このステージはまだあなたのもの。", "them": {"other": "友だち · {n}発"}, "you": {"other": "あなた · {n}発"}},
+  de: {"title": "Ein Freund fordert dich heraus", "rule": "Schaff es mit weniger Schüssen, um zu gewinnen.", "open": "In Bevel öffnen", "get": "Bevel im App Store laden", "room": "RAUM {n}", "daily": "TÄGLICH {date}", "trick": "TRICKSCHUSS {n}", "vs": {"one": "{where} · VS {n} SCHUSS", "other": "{where} · VS {n} SCHÜSSE"}, "date": "{d}. {mon}", "months": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."], "replyTitle": "Dein Freund antwortet", "ruleOne": "Ein Schuss ist das Beste, was geht. Zieh gleich.", "theyWin": "Diese Runde geht an deinen Freund.", "tie": "Unentschieden. Weniger Schüsse gewinnen.", "tieOne": "Unentschieden bei einem Schuss: perfekt.", "youHold": "Der Raum gehört weiter dir.", "them": {"one": "Dein Freund · {n} Schuss", "other": "Dein Freund · {n} Schüsse"}, "you": {"one": "Du · {n} Schuss", "other": "Du · {n} Schüsse"}},
+  fr: {"title": "Un ami te lance un défi", "rule": "Réussis-la en moins de coups pour gagner.", "open": "Ouvrir dans Bevel", "get": "Télécharger Bevel sur l’App Store", "room": "SALLE {n}", "daily": "SALLE DU {date}", "trick": "COUP DE MAÎTRE {n}", "vs": {"one": "{where} · VS {n} COUP", "other": "{where} · VS {n} COUPS"}, "date": "{d} {mon}", "months": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."], "replyTitle": "Ton ami a répondu", "ruleOne": "Un seul coup, c’est le maximum. Égale-le.", "theyWin": "Ton ami gagne cette manche.", "tie": "Égalité. Le moins de coups l’emporte.", "tieOne": "Égalité en un coup : c’est le maximum.", "youHold": "Cette salle reste à toi.", "them": {"one": "Ton ami · {n} coup", "other": "Ton ami · {n} coups"}, "you": {"one": "Toi · {n} coup", "other": "Toi · {n} coups"}},
+  ko: {"title": "친구가 도전장을 보냈어요", "rule": "더 적은 샷으로 깨면 이겨요.", "open": "Bevel에서 열기", "get": "App Store에서 Bevel 받기", "room": "{n}번 방", "daily": "데일리 {date}", "trick": "트릭샷 {n}", "vs": {"other": "{where} · VS {n}샷"}, "date": "{mon} {d}일", "months": ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"], "replyTitle": "친구가 답했어요", "ruleOne": "1샷이 최고 기록이에요. 똑같이 해 보세요.", "theyWin": "이번 판은 친구가 이겼어요.", "tie": "무승부. 샷이 적은 쪽이 이겨요.", "tieOne": "1샷 무승부: 더 좋을 순 없어요.", "youHold": "이 방은 아직 내 거예요.", "them": {"other": "친구 · {n}샷"}, "you": {"other": "나 · {n}샷"}},
+  it: {"title": "Un amico ti ha sfidato", "rule": "Superala con meno tiri per vincere.", "open": "Apri in Bevel", "get": "Scarica Bevel dall’App Store", "room": "STANZA {n}", "daily": "STANZA DEL {date}", "trick": "TIRO A EFFETTO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIRI"}, "date": "{d} {mon}", "months": ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"], "replyTitle": "Il tuo amico ha risposto", "ruleOne": "Un tiro è il massimo. Pareggialo.", "theyWin": "Questo round è suo.", "tie": "Pareggio. Vince chi usa meno tiri.", "tieOne": "Pareggio a un tiro: meglio non si può.", "youHold": "La stanza è ancora tua.", "them": {"one": "Il tuo amico · {n} tiro", "other": "Il tuo amico · {n} tiri"}, "you": {"one": "Tu · {n} tiro", "other": "Tu · {n} tiri"}},
+  zh: {"title": "朋友向你發起挑戰", "rule": "用更少的球過關就贏了。", "open": "在 Bevel 中開啟", "get": "在 App Store 下載 Bevel", "room": "第 {n} 關", "daily": "每日 {date}", "trick": "花式球 {n}", "vs": {"other": "{where} · VS {n} 球"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"], "replyTitle": "朋友回覆了", "ruleOne": "一球已是最佳。追平它吧。", "theyWin": "這一輪朋友贏了。", "tie": "平手。球數少的獲勝。", "tieOne": "一球平手：已是最佳。", "youHold": "這一關還是你的。", "them": {"other": "朋友 · {n} 球"}, "you": {"other": "你 · {n} 球"}},
+  tr: {"title": "Bir arkadaşın sana meydan okudu", "rule": "Kazanmak için daha az atışta geç.", "open": "Bevel’de aç", "get": "Bevel’i App Store’dan indir", "room": "ODA {n}", "daily": "GÜNLÜK {date}", "trick": "USTA ATIŞ {n}", "vs": {"other": "{where} · VS {n} ATIŞ"}, "date": "{d} {mon}", "months": ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"], "replyTitle": "Arkadaşın cevap verdi", "ruleOne": "Tek atış en iyisi. Sen de yap.", "theyWin": "Bu turu arkadaşın aldı.", "tie": "Berabere. Az atış kazanır.", "tieOne": "Tek atışta berabere: daha iyisi yok.", "youHold": "Bu oda hâlâ senin.", "them": {"other": "Arkadaşın · {n} atış"}, "you": {"other": "Sen · {n} atış"}},
+  id: {"title": "Temanmu menantangmu", "rule": "Tuntaskan dengan tembakan lebih sedikit untuk menang.", "open": "Buka di Bevel", "get": "Unduh Bevel di App Store", "room": "RUANG {n}", "daily": "HARIAN {date}", "trick": "TEMBAKAN JITU {n}", "vs": {"other": "{where} · VS {n} TEMBAKAN"}, "date": "{d} {mon}", "months": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"], "replyTitle": "Temanmu membalas", "ruleOne": "Satu tembakan adalah yang terbaik. Samakan.", "theyWin": "Ronde ini milik temanmu.", "tie": "Seri. Yang lebih sedikit menang.", "tieOne": "Seri di satu tembakan: terbaik.", "youHold": "Ruang ini masih milikmu.", "them": {"other": "Temanmu · {n} tembakan"}, "you": {"other": "Kamu · {n} tembakan"}},
   };
   var TRICKS = 10;
 
@@ -88,9 +91,14 @@
     return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
   }
 
+  // One count as a link carries it: 1-9, else null.
+  function count(v) {
+    return v !== null && /^[1-9]$/.test(v) ? +v : null;
+  }
+
   // As the app reads a link: room 1-999, daily-YYYY-MM-DD, trick-1..10; shots 1-9. Anything else: null.
   function parse(room, shots) {
-    if (room === null || shots === null || !/^[1-9]$/.test(shots)) return null;
+    if (room === null || count(shots) === null) return null;
     var n = +shots, m;
     if ((m = /^([1-9]\d{0,2})$/.exec(room))) return { room: room, kind: "room", n: +m[1], shots: n };
     if ((m = /^daily-(\d{4}-\d{2}-\d{2})$/.exec(room))) return isDate(m[1]) ? { room: room, kind: "daily", date: m[1], shots: n } : null;
@@ -107,8 +115,13 @@
       var mon = w.months[+c.date.slice(5, 7) - 1];
       where = fill(w.daily, { date: upper(fill(w.date, { mon: mon, d: +c.date.slice(8, 10) }), lang) });
     }
-    var one = w.vs.one && new Intl.PluralRules(lang).select(c.shots) === "one";
-    return fill(one ? w.vs.one : w.vs.other, { where: where, n: c.shots });
+    return fill(plural(w.vs, c.shots, lang), { where: where });
+  }
+
+  // A count's form ({one, other}) for the language, its {n} filled.
+  function plural(m, n, lang) {
+    var one = m.one && new Intl.PluralRules(lang).select(n) === "one";
+    return fill(one ? m.one : m.other, { n: n });
   }
 
   var lang = pickLang();
@@ -119,25 +132,40 @@
 
   var q = new URLSearchParams(location.search);
   var c = parse(q.get("room"), q.get("shots"));
+  // A reply (the game's round 11, B1): vs is the count the opener sent; checked as shots, and a bad
+  // one is ignored (the page shows the plain challenge).
+  var reply = c ? count(q.get("vs")) : null;
   var head = document.getElementById("title");
   if (!c) {
     // Not a challenge we know: the plain game page.
     head.textContent = "Bevel: Ricochet Puzzle";
     return;
   }
-  head.textContent = w.title;
+  head.textContent = reply === null ? w.title : w.replyTitle;
   var vs = document.getElementById("vs");
   vs.textContent = title(c, lang);
   vs.hidden = false;
-  var rule = document.getElementById("rule");
-  rule.textContent = w.rule;
-  rule.hidden = false;
+  if (reply === null) {
+    // One shot can't be beaten, only matched.
+    var rule = document.getElementById("rule");
+    rule.textContent = c.shots === 1 ? w.ruleOne : w.rule;
+    rule.hidden = false;
+  } else {
+    // Who won: the friend's count (shots) against the opener's own (vs). One quiet line, no art.
+    var score = document.getElementById("score");
+    // The app's two score rows, each with its own plural: "Your friend · 1 shot", "You · 2 shots".
+    score.textContent = plural(w.them, c.shots, lang) + "\n" + plural(w.you, reply, lang);
+    score.hidden = false;
+    var verdict = document.getElementById("verdict");
+    verdict.textContent = c.shots < reply ? w.theyWin : c.shots > reply ? w.youHold : c.shots === 1 ? w.tieOne : w.tie;
+    verdict.hidden = false;
+  }
   var open = document.getElementById("open");
   // Only the checked values go into the app's link.
-  open.href = "bevel://challenge?room=" + encodeURIComponent(c.room) + "&shots=" + c.shots;
+  open.href = "bevel://challenge?room=" + encodeURIComponent(c.room) + "&shots=" + c.shots + (reply === null ? "" : "&vs=" + reply);
   open.textContent = w.open;
   open.hidden = false;
-  document.title = w.title + " · " + vs.textContent;
+  document.title = head.textContent + " · " + vs.textContent;
 })();
 </script>
 </body>
