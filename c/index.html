@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Bevel challenge</title>
+<meta name="description" content="Clear the room in fewer shots than your friend.">
+<meta property="og:title" content="A Bevel challenge">
+<meta property="og:description" content="Clear the room in fewer shots than your friend.">
+<meta property="og:image" content="https://jcancellier.github.io/bevel-site/c/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../icon.png">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<!--
+  A friend's challenge (the game's round 9, item 7): the link a player sends from Bevel's share card,
+  c/?room=5&shots=2. It shows the room and the shots to beat, with Open in Bevel (the app's own
+  bevel://challenge link) and the App Store. Nothing opens by itself: Safari shows an error for a
+  bevel:// link when the app isn't there, and in-app browsers block it, so the friend taps.
+  The query is checked as the app checks it (src/ui/challenge.ts parseChallenge) and only ever set as
+  text, never as HTML. No network calls, cookies or analytics.
+-->
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="../"><img src="../icon.png" alt="">Bevel</a>
+  </header>
+
+  <main class="card hero challenge">
+    <img src="../icon.png" alt="Bevel's app icon">
+    <p class="kicker" id="title">A friend challenged you</p>
+    <h1 class="vs" id="vs" hidden></h1>
+    <p class="tag" id="rule" hidden>Clear it in fewer shots to win.</p>
+    <div class="actions">
+      <a class="button" id="open" href="#" hidden>Open in Bevel</a>
+      <a class="button secondary" id="get" href="https://apps.apple.com/app/id6836523701">Get Bevel on the App Store</a>
+    </div>
+  </main>
+
+  <footer>
+    <a href="../support.html">Support</a><a href="../privacy.html">Privacy policy</a><a href="../terms.html">Terms of use</a>
+    <p>&copy; 2026 Joshua Cancellier</p>
+  </footer>
+</div>
+<script>
+(function () {
+  "use strict";
+  // The app's own words (games/game1/src/i18n): the HUD title the friend will see, "ROOM 5 · VS 2 SHOTS".
+  var WORDS = {
+  en: {"title": "A friend challenged you", "rule": "Clear it in fewer shots to win.", "open": "Open in Bevel", "get": "Get Bevel on the App Store", "room": "ROOM {n}", "daily": "DAILY {date}", "trick": "TRICK SHOT {n}", "vs": {"one": "{where} · VS {n} SHOT", "other": "{where} · VS {n} SHOTS"}, "date": "{mon} {d}", "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]},
+  es: {"title": "Un amigo te reta", "rule": "Supérala en menos tiros para ganar.", "open": "Abrir en Bevel", "get": "Descarga Bevel en la App Store", "room": "SALA {n}", "daily": "DIARIA {date}", "trick": "TIRO DE TRUCO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIROS"}, "date": "{d} {mon}", "months": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]},
+  pt: {"title": "Um amigo te desafiou", "rule": "Passe a fase com menos tacadas para vencer.", "open": "Abrir no Bevel", "get": "Baixe o Bevel na App Store", "room": "FASE {n}", "daily": "DIÁRIA {date}", "trick": "SUPERTACADA {n}", "vs": {"one": "{where} · VS {n} TACADA", "other": "{where} · VS {n} TACADAS"}, "date": "{d} {mon}", "months": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]},
+  ja: {"title": "友だちからの挑戦状", "rule": "もっと少ない発数でクリアしたら勝ち。", "open": "Bevelで開く", "get": "App StoreでBevelを入手", "room": "ステージ{n}", "daily": "デイリー {date}", "trick": "トリックショット{n}", "vs": {"other": "{where} · VS {n}発"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]},
+  de: {"title": "Ein Freund fordert dich heraus", "rule": "Schaff es mit weniger Schüssen, um zu gewinnen.", "open": "In Bevel öffnen", "get": "Bevel im App Store laden", "room": "RAUM {n}", "daily": "TÄGLICH {date}", "trick": "TRICKSCHUSS {n}", "vs": {"one": "{where} · VS {n} SCHUSS", "other": "{where} · VS {n} SCHÜSSE"}, "date": "{d}. {mon}", "months": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."]},
+  fr: {"title": "Un ami te lance un défi", "rule": "Réussis-la en moins de coups pour gagner.", "open": "Ouvrir dans Bevel", "get": "Télécharger Bevel sur l’App Store", "room": "SALLE {n}", "daily": "SALLE DU {date}", "trick": "COUP DE MAÎTRE {n}", "vs": {"one": "{where} · VS {n} COUP", "other": "{where} · VS {n} COUPS"}, "date": "{d} {mon}", "months": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]},
+  ko: {"title": "친구가 도전장을 보냈어요", "rule": "더 적은 샷으로 깨면 이겨요.", "open": "Bevel에서 열기", "get": "App Store에서 Bevel 받기", "room": "{n}번 방", "daily": "데일리 {date}", "trick": "트릭샷 {n}", "vs": {"other": "{where} · VS {n}샷"}, "date": "{mon} {d}일", "months": ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]},
+  it: {"title": "Un amico ti ha sfidato", "rule": "Superala con meno tiri per vincere.", "open": "Apri in Bevel", "get": "Scarica Bevel dall’App Store", "room": "STANZA {n}", "daily": "STANZA DEL {date}", "trick": "TIRO A EFFETTO {n}", "vs": {"one": "{where} · VS {n} TIRO", "other": "{where} · VS {n} TIRI"}, "date": "{d} {mon}", "months": ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]},
+  zh: {"title": "朋友向你發起挑戰", "rule": "用更少的球過關就贏了。", "open": "在 Bevel 中開啟", "get": "在 App Store 下載 Bevel", "room": "第 {n} 關", "daily": "每日 {date}", "trick": "花式球 {n}", "vs": {"other": "{where} · VS {n} 球"}, "date": "{mon}{d}日", "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]},
+  tr: {"title": "Bir arkadaşın sana meydan okudu", "rule": "Kazanmak için daha az atışta geç.", "open": "Bevel’de aç", "get": "Bevel’i App Store’dan indir", "room": "ODA {n}", "daily": "GÜNLÜK {date}", "trick": "USTA ATIŞ {n}", "vs": {"other": "{where} · VS {n} ATIŞ"}, "date": "{d} {mon}", "months": ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]},
+  id: {"title": "Temanmu menantangmu", "rule": "Tuntaskan dengan tembakan lebih sedikit untuk menang.", "open": "Buka di Bevel", "get": "Unduh Bevel di App Store", "room": "RUANG {n}", "daily": "HARIAN {date}", "trick": "TEMBAKAN JITU {n}", "vs": {"other": "{where} · VS {n} TEMBAKAN"}, "date": "{d} {mon}", "months": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]},
+  };
+  var TRICKS = 10;
+
+  function pickLang() {
+    var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+    for (var i = 0; i < prefs.length; i++) {
+      var l = String(prefs[i] || "").toLowerCase().split("-")[0];
+      if (Object.prototype.hasOwnProperty.call(WORDS, l)) return l;
+    }
+    return "en";
+  }
+
+  function fill(s, vars) {
+    return s.replace(/\{(\w+)\}/g, function (m, k) { return Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : m; });
+  }
+
+  function upper(s, lang) {
+    return lang === "tr" ? s.replace(/i/g, "İ").toUpperCase() : s.toUpperCase();
+  }
+
+  function isDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return false;
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
+  }
+
+  // As the app reads a link: room 1-999, daily-YYYY-MM-DD, trick-1..10; shots 1-9. Anything else: null.
+  function parse(room, shots) {
+    if (room === null || shots === null || !/^[1-9]$/.test(shots)) return null;
+    var n = +shots, m;
+    if ((m = /^([1-9]\d{0,2})$/.exec(room))) return { room: room, kind: "room", n: +m[1], shots: n };
+    if ((m = /^daily-(\d{4}-\d{2}-\d{2})$/.exec(room))) return isDate(m[1]) ? { room: room, kind: "daily", date: m[1], shots: n } : null;
+    if ((m = /^trick-([1-9]\d?)$/.exec(room))) return +m[1] <= TRICKS ? { room: room, kind: "trick", n: +m[1], shots: n } : null;
+    return null;
+  }
+
+  function title(c, lang) {
+    var w = WORDS[lang];
+    var where;
+    if (c.kind === "room") where = fill(w.room, { n: c.n });
+    else if (c.kind === "trick") where = fill(w.trick, { n: c.n });
+    else {
+      var mon = w.months[+c.date.slice(5, 7) - 1];
+      where = fill(w.daily, { date: upper(fill(w.date, { mon: mon, d: +c.date.slice(8, 10) }), lang) });
+    }
+    var one = w.vs.one && new Intl.PluralRules(lang).select(c.shots) === "one";
+    return fill(one ? w.vs.one : w.vs.other, { where: where, n: c.shots });
+  }
+
+  var lang = pickLang();
+  var w = WORDS[lang];
+  document.documentElement.lang = lang;
+  var get = document.getElementById("get");
+  get.textContent = w.get;
+
+  var q = new URLSearchParams(location.search);
+  var c = parse(q.get("room"), q.get("shots"));
+  var head = document.getElementById("title");
+  if (!c) {
+    // Not a challenge we know: the plain game page.
+    head.textContent = "Bevel: Ricochet Puzzle";
+    return;
+  }
+  head.textContent = w.title;
+  var vs = document.getElementById("vs");
+  vs.textContent = title(c, lang);
+  vs.hidden = false;
+  var rule = document.getElementById("rule");
+  rule.textContent = w.rule;
+  rule.hidden = false;
+  var open = document.getElementById("open");
+  // Only the checked values go into the app's link.
+  open.href = "bevel://challenge?room=" + encodeURIComponent(c.room) + "&shots=" + c.shots;
+  open.textContent = w.open;
+  open.hidden = false;
+  document.title = w.title + " · " + vs.textContent;
+})();
+</script>
+</body>
+</html>

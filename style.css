@@ -90,3 +90,11 @@ footer a { color: var(--ink-soft); margin: 0 8px; }
   tr { border-top: 1px solid var(--grid); padding: 8px 0; }
   td:first-child { font-weight: 700; }
 }
+
+/* The challenge page (c/): the friend's HUD title big, Open in Bevel first. */
+.challenge .kicker { font-size: 19px; font-weight: 700; color: var(--ink-soft); margin: 16px 0 4px; }
+.challenge .vs { font-size: 30px; letter-spacing: 0.5px; margin: 0 0 8px; overflow-wrap: anywhere; }
+.actions { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 8px; }
+.actions .button { width: 300px; max-width: 100%; text-align: center; }
+.button.secondary { background: var(--card); color: var(--ink); box-shadow: 0 5px 0 var(--wall-side); }
+[hidden] { display: none !important; }
