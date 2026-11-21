@@ -62,7 +62,7 @@
   tr: {"title": "Bir arkadaşın sana meydan okudu", "rule": "Kazanmak için daha az atışta geç.", "open": "Bevel’de aç", "get": "Bevel’i App Store’dan indir", "room": "ODA {n}", "daily": "GÜNLÜK {date}", "trick": "USTA ATIŞ {n}", "vs": {"other": "{where} · VS {n} ATIŞ"}, "date": "{d} {mon}", "months": ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]},
   id: {"title": "Temanmu menantangmu", "rule": "Tuntaskan dengan tembakan lebih sedikit untuk menang.", "open": "Buka di Bevel", "get": "Unduh Bevel di App Store", "room": "RUANG {n}", "daily": "HARIAN {date}", "trick": "TEMBAKAN JITU {n}", "vs": {"other": "{where} · VS {n} TEMBAKAN"}, "date": "{d} {mon}", "months": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]},
   };
-  var TRICKS = 10;
+  var TRICKS = 18;
 
   function pickLang() {
     var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
@@ -88,11 +88,20 @@
     return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
   }
 
-  // As the app reads a link: room 1-999, daily-YYYY-MM-DD, trick-1..10; shots 1-9. Anything else: null.
+  // As the app reads a link: room 1-999, level-24..30, workshop-1..969, daily-YYYY-MM-DD,
+  // trick-1..18; shots 1-9. Anything else: null. Since Bevel's set 5 (rooms 24-30) the generated
+  // rooms are room 30 + n: the app sends them as "workshop-n" and set 5 as "level-n", and a bare
+  // number past 23 is an older build's generated room (23 + n), now room 30 + n.
+  var OLD_HAND = 23, HAND = 30;
   function parse(room, shots) {
     if (room === null || shots === null || !/^[1-9]$/.test(shots)) return null;
     var n = +shots, m;
-    if ((m = /^([1-9]\d{0,2})$/.exec(room))) return { room: room, kind: "room", n: +m[1], shots: n };
+    if ((m = /^([1-9]\d{0,2})$/.exec(room))) {
+      var r = +m[1] <= OLD_HAND ? +m[1] : +m[1] - OLD_HAND + HAND;
+      return r <= 999 ? { room: room, kind: "room", n: r, shots: n } : null;
+    }
+    if ((m = /^level-([1-9]\d{0,2})$/.exec(room))) return +m[1] > OLD_HAND && +m[1] <= HAND ? { room: room, kind: "room", n: +m[1], shots: n } : null;
+    if ((m = /^workshop-([1-9]\d{0,2})$/.exec(room))) return +m[1] + HAND <= 999 ? { room: room, kind: "room", n: +m[1] + HAND, shots: n } : null;
     if ((m = /^daily-(\d{4}-\d{2}-\d{2})$/.exec(room))) return isDate(m[1]) ? { room: room, kind: "daily", date: m[1], shots: n } : null;
     if ((m = /^trick-([1-9]\d?)$/.exec(room))) return +m[1] <= TRICKS ? { room: room, kind: "trick", n: +m[1], shots: n } : null;
     return null;
